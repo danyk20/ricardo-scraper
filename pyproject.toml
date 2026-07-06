@@ -30,7 +30,7 @@ classifiers = [
 Homepage = "https://github.com/danyk20/ricardo-scraper"
 Repository = "https://github.com/danyk20/ricardo-scraper"
 Issues = "https://github.com/danyk20/ricardo-scraper/issues"
-Changelog = "https://github.com/danyk20/ricardo-scraper/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/danyk20/ricardo-scraper/blob/master/CHANGELOG.md"
 
 [project.scripts]
 ricardo-scraper = "ricardo_scraper:run_cli"

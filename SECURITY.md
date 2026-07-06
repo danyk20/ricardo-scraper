@@ -22,5 +22,5 @@ response time is best-effort, not guaranteed on an SLA.
 
 ## Supported versions
 
-Only the latest commit on `main` is supported. There are no long-term
+Only the latest commit on `master` is supported. There are no long-term
 maintenance branches.
