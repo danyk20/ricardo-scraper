@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ricardo-scraper"
+description = "Free, keyless scraper and library for ricardo.ch listings -- any item type, not just cars. Unofficial, not affiliated with Ricardo AG."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Daniel Košč", email = "maintainer@danielkosc.eu" }]
+dependencies = ["camoufox==0.4.11", "playwright==1.60.0", "orjson", "requests", "platformdirs"]
+dynamic = ["version"]
+keywords = ["ricardo", "web-scraping", "scraper", "marketplace", "switzerland", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/danyk20/ricardo-scraper"
+Repository = "https://github.com/danyk20/ricardo-scraper"
+Issues = "https://github.com/danyk20/ricardo-scraper/issues"
+Changelog = "https://github.com/danyk20/ricardo-scraper/blob/main/CHANGELOG.md"
+
+[project.scripts]
+ricardo-scraper = "ricardo_scraper:run_cli"
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=9.1",
+    "pytest-cov~=7.1",
+    "ruff~=0.15",
+    "mypy~=2.1",
+]
+
+[tool.hatch.version]
+path = "ricardo_scraper.py"
+
+[tool.hatch.build.targets.wheel]
+include = ["ricardo_scraper.py", "pin_camoufox_browser.py"]
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end tests that make real calls to ricardo.ch through a real browser",
+]
+addopts = "-m 'not e2e' --cov=ricardo_scraper --cov-report=term-missing --cov-fail-under=95"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["ricardo_scraper"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade (modern syntax)
+    "B",   # flake8-bugbear (common footguns)
+]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["ricardo_scraper.py"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+# Permissive on purpose: this is a small single-file utility, not chasing
+# --strict. The goal is catching real mismatches, not maximal rigor.

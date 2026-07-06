@@ -11,6 +11,10 @@ platformdirs = "*"
 camoufox = "==0.4.11"
 
 [dev-packages]
+pytest = "*"
+pytest-cov = "*"
+ruff = "*"
+mypy = "*"
 
 [requires]
 python_version = "3.13"

@@ -44,8 +44,7 @@ VERSION = "152.0.4"
 RELEASE = "zeta.1"  # arbitrary label that sorts as "supported" (see below)
 ASSET_URLS = {
     ("darwin", "arm64"): (
-        "https://github.com/daijro/camoufox/releases/download/"
-        "v152.0.2-alpha/camoufox-152.0.4-alpha.25-mac.arm64.zip"
+        "https://github.com/daijro/camoufox/releases/download/v152.0.2-alpha/camoufox-152.0.4-alpha.25-mac.arm64.zip"
     ),
 }
 
@@ -104,9 +103,7 @@ def install_pinned_build() -> None:
     # minimum ("beta.19"), so the real label would make camoufox consider
     # this build "outdated" and try to replace it. "zeta.1" sorts above
     # "beta.19" and below the max-version sentinel, so it's accepted.
-    (install_dir / "version.json").write_bytes(
-        orjson.dumps({"version": VERSION, "release": RELEASE})
-    )
+    (install_dir / "version.json").write_bytes(orjson.dumps({"version": VERSION, "release": RELEASE}))
     print(f"Pinned camoufox browser to {VERSION}-{RELEASE} (upstream alpha.25).")
 
 
@@ -121,9 +118,7 @@ def ensure_pinned_browser(force: bool = False) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--force", action="store_true", help="Reinstall even if already pinned"
-    )
+    parser.add_argument("--force", action="store_true", help="Reinstall even if already pinned")
     args = parser.parse_args()
 
     if ensure_pinned_browser(force=args.force):
