@@ -1,6 +1,7 @@
 # Ricardo.ch Scraper
 
 [![CI](https://github.com/danyk20/ricardo-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/danyk20/ricardo-scraper/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/ricardo-scraper)](https://pypi.org/project/ricardo-scraper/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org/)
 
@@ -82,6 +83,14 @@ One consequence: **`category` filtering requires `detail=True`** --
 category breadcrumbs only exist in the JSON-LD block, not the search
 summary -- `scrape(..., category=..., detail=False)` raises `ValueError`
 immediately rather than silently ignoring the filter.
+
+`category` matches against each listing's breadcrumb slugs (e.g.
+`"notebooks-39272"`), and accepts either Ricardo's numeric category id
+(`"39272"`) or a case-insensitive name (`"notebooks"`, `"Notebooks"`, or a
+multi-word slug like `"computer-netzwerk"`) -- Ricardo's JSON-LD doesn't
+expose a separate human-readable category name, only the slug, so the name
+match works off the slug's non-numeric part (`_category_matches()` in
+`ricardo_scraper.py`).
 
 ### Cloudflare
 
@@ -176,7 +185,7 @@ current directory: `laptop.csv` and `laptop.json`.
 | `--version` | Print the installed version and exit |
 | `query` | Free-text search term, e.g. `"laptop"` or `"iphone 13"` (required, positional) |
 | `--locale` | Ricardo locale (`de`/`fr`/`it`), default `de` -- see [Locale](#locale) |
-| `--category` | Ricardo category id, e.g. `39272`. Client-side filter -- see [Detail mode](#detail-mode) |
+| `--category` | Ricardo category id or name, e.g. `39272` or `notebooks`. Client-side filter -- see [Detail mode](#detail-mode) |
 | `--out` | Output file base name, without extension. Defaults to a slugified version of the query |
 | `--no-detail` | Skip visiting each listing's own page; keep only the summary fields -- see [Detail mode](#detail-mode) |
 | `--price-from` / `--price-to` | Filter by price in CHF (inclusive, either end optional). Client-side -- see [Data structure](#data-structure) |
@@ -234,10 +243,16 @@ result.to_json("laptops.json")
 Install it into your own project's environment with:
 
 ```bash
-pip install git+https://github.com/danyk20/ricardo-scraper.git
+pip install ricardo-scraper
 ```
 
-(Not yet published to PyPI.)
+(Not on PyPI yet, or want the latest unreleased code? Install straight from
+GitHub instead: `pip install git+https://github.com/danyk20/ricardo-scraper.git`.)
+
+Either way you also get a real `ricardo-scraper` command (see `--version`
+below), not just the importable module -- pipenv is only needed if you're
+working on this repo itself (running its CLI from source, or its test
+suite).
 
 #### `scrape()` signature
 
@@ -246,7 +261,7 @@ def scrape(
     query: str,                        # e.g. "laptop" or "iphone 13" -- required
     *,
     locale: str = "de",                # "de" / "fr" / "it"
-    category: str | None = None,       # optional Ricardo category id; requires detail=True
+    category: str | None = None,       # optional Ricardo category id or name; requires detail=True
     detail: bool = True,                # visit every listing individually for full fields (slower)
     price_from: float | None = None,   # CHF, inclusive, filtered client-side
     price_to: float | None = None,     # CHF, inclusive, filtered client-side

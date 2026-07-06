@@ -431,8 +431,21 @@ def visit_all_listings(
 
 
 def _category_matches(categories: Iterable[str], category: str) -> bool:
-    category = str(category)
-    return any(c == category or c.endswith(f"-{category}") for c in categories)
+    """Match a requested category against a listing's breadcrumb slugs
+    (e.g. "notebooks-39272"), by either its numeric Ricardo category id
+    ("39272") or a case-insensitive name/word match ("notebooks",
+    "Notebooks", or the full slug "notebooks-39272") -- Ricardo's JSON-LD
+    doesn't expose a separate human-readable category name, only the slug,
+    so the name match works off the slug's non-numeric part."""
+    query = str(category).strip().lower()
+    for slug in categories:
+        slug_lower = slug.lower()
+        if slug_lower == query or slug_lower.endswith(f"-{query}"):
+            return True
+        name_part = re.sub(r"-\d+$", "", slug_lower)
+        if query == name_part or query in name_part.split("-"):
+            return True
+    return False
 
 
 # Fields worth pulling to the front of the CSV; everything else discovered on
@@ -547,11 +560,11 @@ def scrape(
     Args:
         query: Free-text search term, e.g. "laptop" or "iphone 13".
         locale: Ricardo locale ("de"/"fr"/"it"), default "de".
-        category: Optional Ricardo category id (e.g. "39272" for
-            "Notebooks"). Matched client-side against each listing's JSON-LD
-            category breadcrumbs -- see the module docstring for why this
-            isn't a real server-side filter, and why it requires
-            detail=True.
+        category: Optional Ricardo category id or name (e.g. "39272" or
+            "notebooks" for the same category). Matched client-side against
+            each listing's JSON-LD category breadcrumbs -- see the module
+            docstring for why this isn't a real server-side filter, and why
+            it requires detail=True.
         detail: If True (default), visit every listing's own page to
             extract the full record (description, condition, seller, brand,
             images, ...). If False, keep only the fast summary fields
@@ -643,8 +656,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--category",
         default=None,
-        help="Ricardo category id, e.g. '39272'. Matched client-side against each listing's "
-        "category breadcrumbs; requires detail mode (incompatible with --no-detail).",
+        help="Ricardo category id or name, e.g. '39272' or 'notebooks'. Matched client-side "
+        "against each listing's category breadcrumbs; requires detail mode (incompatible with --no-detail).",
     )
     parser.add_argument(
         "--out",

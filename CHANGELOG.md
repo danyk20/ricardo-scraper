@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   degrades to defaults (`null`/`[]`) rather than dropping the listing,
   since it's supplementary to the JSON-LD record.
 
+### Fixed
+
+- `category` filtering now also accepts a category name (e.g.
+  `"notebooks"`), not just Ricardo's numeric id (`"39272"`) -- previously
+  any non-numeric value silently matched nothing.
+
 ## [0.1.0] - 2026-07-06
 
 Initial release.
