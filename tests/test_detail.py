@@ -62,11 +62,14 @@ def test_extract_product_jsonld_no_product_node(fake_session_factory):
 
 
 def test_visit_all_listings_replaces_summary_with_full_record(
-    fake_session_factory, summary_item_factory, product_jsonld_factory, no_sleep
+    fake_session_factory, summary_item_factory, product_jsonld_factory, next_data_factory, no_sleep
 ):
     summary = summary_item_factory(listing_id="1234567890")
     summary["url"] = DETAIL_URL  # search_listings() normally makes this absolute before this point
-    session = fake_session_factory(detail_responses={DETAIL_URL: product_jsonld_factory()})
+    session = fake_session_factory(
+        detail_responses={DETAIL_URL: product_jsonld_factory()},
+        next_data_responses={DETAIL_URL: next_data_factory(location_city="Biberist", location_zip="4562")},
+    )
 
     visited = visit_all_listings(session, [summary], verbose=False)
 
@@ -76,6 +79,28 @@ def test_visit_all_listings_replaces_summary_with_full_record(
     assert item["description"] == "A fine laptop."
     assert item["categories"] == ["notebooks-39272", "computer-netzwerk-39091", "de"]
     assert "image" not in item  # summary-only field, replaced by the richer "images" list
+    assert item["location_city"] == "Biberist"
+    assert item["location_zip"] == "4562"
+    assert item["seller_rating_score"] == 98.0
+    assert len(item["delivery_options"]) == 2
+    assert len(item["questions_and_answers"]) == 1
+
+
+def test_visit_all_listings_missing_next_data_still_includes_listing(
+    fake_session_factory, summary_item_factory, product_jsonld_factory, no_sleep
+):
+    """A listing with a good JSON-LD block but no #__NEXT_DATA__ (or an
+    unparseable one) still gets included -- location/rating/delivery/Q&A
+    are supplementary, not required for a valid record."""
+    summary = summary_item_factory(listing_id="1234567890")
+    summary["url"] = DETAIL_URL
+    session = fake_session_factory(detail_responses={DETAIL_URL: product_jsonld_factory()})
+
+    visited = visit_all_listings(session, [summary], verbose=False)
+
+    assert len(visited) == 1
+    assert visited[0]["location_city"] is None
+    assert visited[0]["delivery_options"] == []
 
 
 def test_visit_all_listings_verbose_logs_progress(

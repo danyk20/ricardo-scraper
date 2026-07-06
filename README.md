@@ -58,10 +58,14 @@ Two-phase scraping, mirroring AutoScout24's search-then-detail split:
    every page, which would otherwise make it reappear across pages;
    de-duplicating by id as it paginates handles this automatically.
 2. **Detail** (`visit_all_listings()`, the `detail=True` default): visits
-   each listing's own page and parses its embedded schema.org `Product`
-   JSON-LD block (`<script id="pdp-json-ld">`, rendered server-side for
-   SEO) for the full record -- description, condition, seller, brand,
-   category breadcrumbs, full-resolution images.
+   each listing's own page and parses two things out of the same page load:
+   its embedded schema.org `Product` JSON-LD block (`<script
+   id="pdp-json-ld">`, rendered server-side for SEO) for description,
+   condition, seller, brand, category breadcrumbs, and full-resolution
+   images; and its `#__NEXT_DATA__` blob (Next.js's own server-rendered
+   props -- a single JSON script tag, not the SEO data) for fields Ricardo
+   doesn't put in the JSON-LD: the listing's location (city/zip), the
+   seller's rating, structured delivery options, and questions & answers.
 
 ### Detail mode
 
@@ -342,6 +346,20 @@ depends on whether detail mode ran (see [Detail mode](#detail-mode)):
 | `brand` | `string \| null` | Free-form brand name, when Ricardo has one for the category |
 | `categories` | `list[string]` | Category breadcrumb slugs, e.g. `["notebooks-39272", "computer-netzwerk-39091", "de"]` |
 | `images` | `list[string]` | Full-resolution image URLs |
+| `location_city` | `string \| null` | Listing's town/village, e.g. `"Biberist"` |
+| `location_zip` | `string \| null` | Listing's postal code, e.g. `"4562"` |
+| `seller_rating_score` | `number \| null` | Seller's positive-rating percentage (0-100), e.g. `98.94`. `null` if the seller has zero ratings yet (not `0`) |
+| `seller_ratings_count` | `int \| null` | Number of ratings the percentage above is based on |
+| `delivery_options` | `list[object]` | One entry per shipping/pickup option: `{"id": string, "price": number, "cumulative": bool}` -- `price` in CHF (converted from the raw Rappen/cents value), `id` e.g. `"parcel_b_2kg"`/`"get_by_buyer"` |
+| `questions_and_answers` | `list[object]` | One entry per public Q&A thread on the listing: `{"question": string, "question_date": string, "answer": string \| null, "answer_date": string \| null}` -- `answer`/`answer_date` are `null` for an unanswered question |
+
+Location/seller-rating/delivery/Q&A come from a different source than the
+rest of the detail shape (the page's `#__NEXT_DATA__` blob, not the JSON-LD
+block -- see [How it works](#how-it-works)) and degrade independently: a
+listing missing this data (e.g. a genuinely different page shape) still
+gets included with these fields left at their defaults (`null`/`[]`) rather
+than being dropped, since the JSON-LD-derived fields are the ones that
+actually make a record usable.
 
 There is no fixed/versioned schema published by Ricardo for either shape --
 the tables above reflect fields observed in practice as of this writing.
@@ -354,13 +372,18 @@ rows/listings correspondence and order (sorted by price ascending).
 Flattening rules (also available programmatically as `flatten_listing()`):
 
 - Lists are joined into one semicolon-separated cell, e.g. `categories` →
-  `"notebooks-39272; computer-netzwerk-39091; de"`.
-- Nested objects (none in the current shape, but handled generically)
-  become `parent_child` columns.
+  `"notebooks-39272; computer-netzwerk-39091; de"`; a list of objects (like
+  `delivery_options`/`questions_and_answers`) becomes one JSON-per-entry
+  cell joined the same way, e.g. `{"id": "get_by_buyer", "price": 0.0,
+  "cumulative": false}; {"id": "parcel_b_2kg", "price": 9.0, "cumulative":
+  false}`.
+- Nested objects become `parent_child` columns (no top-level field is
+  nested in the current shape, but this is handled generically).
 - Columns are the union of every field seen across all rows (heterogeneous
   rows -- e.g. mixing summary- and detail-shape listings -- don't crash the
   writer; missing values are an empty string), with `id, title, price,
-  currency, condition, brand, seller_name, categories, url` pinned first
+  currency, condition, brand, location_city, location_zip, seller_name,
+  seller_rating_score, seller_ratings_count, categories, url` pinned first
   and everything else sorted alphabetically after them.
 
 ## Testing

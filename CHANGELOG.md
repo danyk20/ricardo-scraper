@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-06
+
+### Added
+
+- Detail-mode listings now also carry `location_city`/`location_zip`,
+  `seller_rating_score`/`seller_ratings_count`, `delivery_options`, and
+  `questions_and_answers` -- pulled from the same detail-page load's
+  `#__NEXT_DATA__` blob (Next.js's own server-rendered props), alongside
+  the existing JSON-LD-derived fields. Missing/unparseable `#__NEXT_DATA__`
+  degrades to defaults (`null`/`[]`) rather than dropping the listing,
+  since it's supplementary to the JSON-LD record.
+
 ## [0.1.0] - 2026-07-06
 
 Initial release.

@@ -15,11 +15,14 @@ requires real browser JS execution and fingerprinting checks. There is no
 separate, unauthenticated JSON API the way api.autoscout24.ch is for
 AutoScout24. So instead of talking to an API, this scraper drives a real,
 fingerprint-patched Firefox via camoufox (github.com/daijro/camoufox),
-which passes the challenge like a normal browser, then parses each
-listing's own embedded schema.org `Product` JSON-LD block
-(`<script id="pdp-json-ld">`, rendered server-side for SEO) for the full
-record -- title, description, price, condition, seller, brand, category
-breadcrumbs, images.
+which passes the challenge like a normal browser, then parses two things
+out of each listing's own page: its embedded schema.org `Product` JSON-LD
+block (`<script id="pdp-json-ld">`, rendered server-side for SEO) for
+title, description, price, condition, seller, brand, category breadcrumbs,
+images; and its `#__NEXT_DATA__` blob (Next.js's own server-rendered props,
+a single JSON script tag) for fields Ricardo doesn't put in the SEO data:
+location (city/zip), seller rating, structured delivery options, and
+questions & answers.
 
 Two-phase scraping, mirroring AutoScout24's search-then-detail split:
 
@@ -29,7 +32,8 @@ Two-phase scraping, mirroring AutoScout24's search-then-detail split:
    de-duplicated by id (Ricardo can pin a "boosted" listing to the first
    slot of every page).
 2. Detail (`visit_all_listings()`, the `detail=True` default): visits each
-   listing's own page and parses its `pdp-json-ld` block for the full
+   listing's own page and parses its `pdp-json-ld` block and `#__NEXT_DATA__`
+   blob (see `extract_product_jsonld()`/`extract_next_data()`) for the full
    record. `detail=False` / `--no-detail` skips this and keeps only the
    fast summary fields.
 
@@ -82,7 +86,7 @@ from playwright.sync_api import Error as PlaywrightError
 
 from pin_camoufox_browser import ensure_pinned_browser
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 DEFAULT_LOCALE = "de"
 BASE_URL = "https://www.ricardo.ch"
@@ -246,35 +250,119 @@ def search_listings(
     return listings[:max_results] if max_results is not None else listings
 
 
-def extract_product_jsonld(
-    session: BrowserSession, *, attempts: int = 3, retry_wait_ms: int = 1500
-) -> dict[str, Any] | None:
-    """Pull the schema.org Product node out of the current detail page's
-    JSON-LD block.
+def _evaluate_with_retry(session: BrowserSession, js: str, *, attempts: int = 3, retry_wait_ms: int = 1500) -> Any:
+    """Evaluate js, retrying a few times on a falsy result.
 
     The generic "page title past Loading" readiness check in
-    BrowserSession.goto() occasionally isn't a tight enough signal for this
-    specific script tag -- the very first navigation in a fresh browser
-    session can return before it's rendered even though the title has
-    already moved past "Loading" (observed in testing: reliable on a
-    session's 2nd+ navigation, occasionally missing on the 1st). So retry a
-    few times with a short wait rather than treating an empty result as
-    final immediately.
+    BrowserSession.goto() occasionally isn't a tight enough signal for a
+    specific script tag to have rendered yet -- the very first navigation in
+    a fresh browser session can return before it's there even though the
+    title has already moved past "Loading" (observed in testing: reliable
+    on a session's 2nd+ navigation, occasionally missing on the 1st). So
+    retry a few times with a short wait rather than treating an empty
+    result as final immediately.
     """
     for attempt in range(attempts):
-        raw = session.evaluate("document.getElementById('pdp-json-ld')?.textContent || null")
-        if raw:
-            data = json.loads(raw)
-            for node in data.get("@graph", []):
-                if node.get("@type") == "Product":
-                    return node
-            return None
+        result = session.evaluate(js)
+        if result:
+            return result
         if attempt < attempts - 1:
             session.page.wait_for_timeout(retry_wait_ms)
     return None
 
 
-def _listing_from_product(product: dict[str, Any], url: str) -> dict[str, Any]:
+def extract_product_jsonld(session: BrowserSession, **kwargs: Any) -> dict[str, Any] | None:
+    """Pull the schema.org Product node out of the current detail page's
+    JSON-LD block."""
+    raw = _evaluate_with_retry(session, "document.getElementById('pdp-json-ld')?.textContent || null", **kwargs)
+    if not raw:
+        return None
+    data = json.loads(raw)
+    for node in data.get("@graph", []):
+        if node.get("@type") == "Product":
+            return node
+    return None
+
+
+def extract_next_data(session: BrowserSession, **kwargs: Any) -> dict[str, Any] | None:
+    """Pull and parse the current detail page's `#__NEXT_DATA__` blob --
+    Next.js's own server-rendered props, which (unlike the JSON-LD block)
+    carries fields ricardo.ch doesn't put in the SEO data: the listing's
+    location, the seller's rating, structured delivery options, and
+    questions & answers. Returns the parsed top-level object, or None if
+    it's missing/unparseable (e.g. a genuinely different page shape)."""
+    raw = _evaluate_with_retry(session, "document.getElementById('__NEXT_DATA__')?.textContent || null", **kwargs)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+
+def _extract_extra_fields(next_data: dict[str, Any] | None) -> dict[str, Any]:
+    """Pulls location/seller-rating/delivery/Q&A out of a parsed
+    #__NEXT_DATA__ blob (see extract_next_data()). Degrades to empty/None
+    values rather than raising if any part of the expected shape is
+    missing -- this is supplementary data layered on top of the JSON-LD
+    record, not something a listing should be dropped over."""
+    defaults: dict[str, Any] = {
+        "location_city": None,
+        "location_zip": None,
+        "seller_rating_score": None,
+        "seller_ratings_count": None,
+        "delivery_options": [],
+        "questions_and_answers": [],
+    }
+    if not next_data:
+        return defaults
+
+    try:
+        page_props = next_data["props"]["pageProps"]
+        article = page_props["article"]
+    except (KeyError, TypeError):
+        article = {}
+
+    offer = article.get("offer") or {}
+    defaults["location_city"] = offer.get("city")
+    defaults["location_zip"] = offer.get("zip_code")
+
+    seller = article.get("seller") or {}
+    score = seller.get("score")
+    defaults["seller_rating_score"] = round(score * 100, 2) if isinstance(score, (int, float)) else None
+    defaults["seller_ratings_count"] = seller.get("ratingsCount")
+
+    defaults["delivery_options"] = [
+        {
+            "id": opt.get("id"),
+            "price": (opt["price"] / 100) if isinstance(opt.get("price"), (int, float)) else None,
+            "cumulative": opt.get("isCumulativeShipping"),
+        }
+        for opt in (article.get("deliveryOptions") or [])
+    ]
+
+    try:
+        queries = page_props["dehydratedState"]["queries"]
+    except (KeyError, TypeError):
+        queries = []
+    for query in queries:
+        if query.get("queryKey", [None])[0] == "get-questions-and-answers":
+            qa_data = query.get("state", {}).get("data") or []
+            defaults["questions_and_answers"] = [
+                {
+                    "question": (qa.get("question") or {}).get("text"),
+                    "question_date": (qa.get("question") or {}).get("date"),
+                    "answer": (qa.get("answer") or {}).get("text"),
+                    "answer_date": (qa.get("answer") or {}).get("date"),
+                }
+                for qa in qa_data
+            ]
+            break
+
+    return defaults
+
+
+def _listing_from_product(product: dict[str, Any], url: str, extra: dict[str, Any]) -> dict[str, Any]:
     offer = product.get("offers", {}) or {}
     seller = offer.get("seller", {}) or {}
     brand = product.get("brand", {}) or {}
@@ -298,6 +386,7 @@ def _listing_from_product(product: dict[str, Any], url: str) -> dict[str, Any]:
         "brand": brand.get("name"),
         "categories": categories,
         "images": product.get("image", []),
+        **extra,
     }
 
 
@@ -308,12 +397,20 @@ def visit_all_listings(
     verbose: bool = True,
 ) -> list[dict[str, Any]]:
     """Visit each listing's own page one by one and replace its summary
-    record with the full JSON-LD-derived record.
+    record with the full record: the JSON-LD-derived fields (title,
+    description, price, condition, seller, brand, categories, images) plus
+    location, seller rating, delivery options, and questions & answers
+    pulled from the same page's `#__NEXT_DATA__` blob (see
+    extract_next_data()) -- no extra navigation needed for the latter.
 
     A listing whose detail page doesn't yield a parseable JSON-LD block
     (rare in testing, but not impossible -- e.g. a listing that ended
     between the search and detail phase) is skipped with a warning rather
-    than included with inconsistent fields.
+    than included with inconsistent fields. A missing/unparseable
+    `#__NEXT_DATA__` blob is not fatal -- the listing is still included,
+    just with the location/rating/delivery/Q&A fields left as their
+    defaults (None/empty), since that data is supplementary to the core
+    JSON-LD record.
     """
     visited = []
     total = len(listings)
@@ -323,7 +420,9 @@ def visit_all_listings(
         if product is None:
             logger.warning("  no product data found for %s -- skipping", item["url"])
         else:
-            visited.append(_listing_from_product(product, item["url"]))
+            next_data = extract_next_data(session)
+            extra = _extract_extra_fields(next_data)
+            visited.append(_listing_from_product(product, item["url"], extra))
         if verbose and (i % 10 == 0 or i == total):
             logger.info("  visited %d/%d listings", i, total)
         if i < total:
@@ -339,7 +438,21 @@ def _category_matches(categories: Iterable[str], category: str) -> bool:
 # Fields worth pulling to the front of the CSV; everything else discovered on
 # the listing objects is appended afterwards, sorted alphabetically, so no
 # field is ever silently dropped.
-PRIORITY_FIELDS = ["id", "title", "price", "currency", "condition", "brand", "seller_name", "categories", "url"]
+PRIORITY_FIELDS = [
+    "id",
+    "title",
+    "price",
+    "currency",
+    "condition",
+    "brand",
+    "location_city",
+    "location_zip",
+    "seller_name",
+    "seller_rating_score",
+    "seller_ratings_count",
+    "categories",
+    "url",
+]
 
 
 def _scalarize(value: Any) -> Any:

@@ -36,16 +36,20 @@ class FakeBrowserSession:
     JSON-LD string `document.getElementById('pdp-json-ld')` would have
     returned for it (or None, simulating a listing with no parseable
     JSON-LD block).
+    `next_data_responses`: dict mapping an exact detail-page URL to the raw
+    `#__NEXT_DATA__` JSON string (or None), for the location/seller-rating/
+    delivery-options/Q&A fields that live there instead of the JSON-LD block.
 
-    `.evaluate()` routes between the two based on which JS snippet is being
-    evaluated (the only two shapes ricardo_scraper.py ever asks for), since
-    there's no separate URL-vs-URL distinction visible to a mocked
+    `.evaluate()` routes between the three based on which JS snippet is
+    being evaluated (the only shapes ricardo_scraper.py ever asks for),
+    since there's no separate URL-vs-URL distinction visible to a mocked
     `evaluate()` call the way there is for a mocked HTTP request.
     """
 
-    def __init__(self, search_responses=None, detail_responses=None):
+    def __init__(self, search_responses=None, detail_responses=None, next_data_responses=None):
         self.search_responses = search_responses or {}
         self.detail_responses = detail_responses or {}
+        self.next_data_responses = next_data_responses or {}
         self.current_url = None
         self.goto_log = []
         self.closed = False
@@ -60,6 +64,8 @@ class FakeBrowserSession:
             return self.search_responses.get(self.current_url, [])
         if "pdp-json-ld" in js:
             return self.detail_responses.get(self.current_url)
+        if "__NEXT_DATA__" in js:
+            return self.next_data_responses.get(self.current_url)
         raise AssertionError(f"FakeBrowserSession.evaluate() got unexpected JS: {js[:80]!r}")
 
     def close(self):
@@ -120,6 +126,53 @@ def make_product_jsonld(
     )
 
 
+def make_next_data(
+    location_city="Zürich",
+    location_zip="8000",
+    seller_score=0.98,
+    seller_ratings_count=100,
+    delivery_options=(("parcel_b_2kg", 900, False), ("get_by_buyer", 0, False)),
+    questions_and_answers=(("Does it still work?", "Yes, perfectly.", "2026-06-01T00:00:00Z", "2026-06-02T00:00:00Z"),),
+):
+    """A raw `#__NEXT_DATA__` payload, in the shape observed on live
+    ricardo.ch listing pages: Next.js's own server-rendered props, carrying
+    the article's location/seller/deliveryOptions directly, plus a
+    react-query `dehydratedState.queries` entry keyed
+    `["get-questions-and-answers", <id>]` for Q&A."""
+    qa_data = [
+        {
+            "id": i,
+            "question": {"text": q, "date": qd, "nick": "asker", "user_id": 1, "language": "de"},
+            "answer": {"text": a, "date": ad, "nick": "seller", "user_id": 2, "language": "de"} if a else None,
+        }
+        for i, (q, a, qd, ad) in enumerate(questions_and_answers)
+    ]
+    return json.dumps(
+        {
+            "props": {
+                "pageProps": {
+                    "article": {
+                        "offer": {"city": location_city, "zip_code": location_zip},
+                        "seller": {"score": seller_score, "ratingsCount": seller_ratings_count},
+                        "deliveryOptions": [
+                            {"id": opt_id, "price": price, "isCumulativeShipping": cumulative}
+                            for opt_id, price, cumulative in delivery_options
+                        ],
+                    },
+                    "dehydratedState": {
+                        "queries": [
+                            {
+                                "queryKey": ["get-questions-and-answers", "1234567890"],
+                                "state": {"data": qa_data},
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+    )
+
+
 def make_summary_item(listing_id="1234567890", title="Test Laptop", price=100.0, slug="test-laptop"):
     """A search-results-shaped summary dict, matching SEARCH_SUMMARY_JS's
     return value (the "url" field holds a relative href at this stage, same
@@ -137,6 +190,11 @@ def make_summary_item(listing_id="1234567890", title="Test Laptop", price=100.0,
 @pytest.fixture
 def product_jsonld_factory():
     return make_product_jsonld
+
+
+@pytest.fixture
+def next_data_factory():
+    return make_next_data
 
 
 @pytest.fixture
