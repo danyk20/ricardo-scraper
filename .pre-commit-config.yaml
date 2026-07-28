@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0 # keep in sync with whatever `ruff~=0.15` in pyproject.toml actually
+    # resolves to in CI (that spec floats past 0.15.x -- PEP 440 ~= only pins
+    # the major "0" -- so re-run `pre-commit autoupdate` if CI's installed
+    # version drifts from this).
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+        # Ruff also formats Python code fences embedded in Markdown (README.md,
+        # docs/REFERENCE.md) -- CI's `ruff format --check .` covers those too,
+        # so the hook needs to as well or drift slips through to CI again.
+        types_or: [python, pyi, jupyter, markdown]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy ricardo_scraper.py
+        language: system
+        pass_filenames: false
+        files: \.py$

@@ -9,7 +9,13 @@ the [License](README.md#license) section of the README).
 git clone https://github.com/danyk20/ricardo-scraper.git
 cd ricardo-scraper
 pipenv install --dev
+pipenv run pre-commit install
 ```
+
+`pre-commit install` wires up `.pre-commit-config.yaml` (ruff lint/format --
+including the Python code fences embedded in `README.md`/`docs/REFERENCE.md`,
+which CI checks too -- and mypy) to run automatically on `git commit`, so
+formatting/lint drift gets caught locally instead of on CI.
 
 ## Before opening a PR
 
