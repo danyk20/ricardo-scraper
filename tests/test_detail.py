@@ -84,6 +84,10 @@ def test_visit_all_listings_replaces_summary_with_full_record(
     assert item["seller_rating_score"] == 98.0
     assert len(item["delivery_options"]) == 2
     assert len(item["questions_and_answers"]) == 1
+    assert item["color"] == "Weiss"
+    assert item["model"] == "Model X"
+    assert item["attributes"]["car_brand"] == "Tesla"
+    assert item["article_status"] == "active"
 
 
 def test_visit_all_listings_missing_next_data_still_includes_listing(

@@ -88,6 +88,8 @@ def make_product_jsonld(
     availability="InStock",
     seller_name="test_seller",
     brand="TestBrand",
+    color="Weiss",
+    model="Model X",
     categories=("notebooks-39272", "computer-netzwerk-39091", "de"),
     images=("https://img.ricardostatic.ch/images/example/t_1800x1350/test-laptop",),
 ):
@@ -106,6 +108,8 @@ def make_product_jsonld(
                     "description": description,
                     "category": [{"url": f"https://www.ricardo.ch/de/c/{c}/"} for c in categories],
                     "image": list(images),
+                    "color": color,
+                    "model": model,
                     "brand": {"@type": "Brand", "name": brand} if brand else None,
                     "offers": {
                         "@type": "Offer",
@@ -133,12 +137,27 @@ def make_next_data(
     seller_ratings_count=100,
     delivery_options=(("parcel_b_2kg", 900, False), ("get_by_buyer", 0, False)),
     questions_and_answers=(("Does it still work?", "Yes, perfectly.", "2026-06-01T00:00:00Z", "2026-06-02T00:00:00Z"),),
+    attributes=(
+        ("auto_first_registration_year", "Erstzulassung Jahr", ("2018",)),
+        ("auto_mileage", "Kilometer", ("93'500 km",)),
+        ("auto_gear_type", "Getriebeart", ("Automat",)),
+        ("color", "Farbe", ("Weiss",)),
+        ("car_brand", "Marke", ("Tesla",)),
+        ("car_model", "Modell", ("Model X",)),
+    ),
+    status="active",
+    condition_key="used",
+    category_id=39272,
+    feedback_state="none",
 ):
     """A raw `#__NEXT_DATA__` payload, in the shape observed on live
     ricardo.ch listing pages: Next.js's own server-rendered props, carrying
-    the article's location/seller/deliveryOptions directly, plus a
-    react-query `dehydratedState.queries` entry keyed
-    `["get-questions-and-answers", <id>]` for Q&A."""
+    the article's location/seller/deliveryOptions/attributes directly,
+    plus a react-query `dehydratedState.queries` entry keyed
+    `["get-questions-and-answers", <id>]` for Q&A. `status`/`condition_key`/
+    `category_id` stand in for the article's other top-level scalar fields
+    that aren't mapped to a named output field; `feedback_state` stands in
+    for the internal-only state that should never be surfaced."""
     qa_data = [
         {
             "id": i,
@@ -158,6 +177,14 @@ def make_next_data(
                             {"id": opt_id, "price": price, "isCumulativeShipping": cumulative}
                             for opt_id, price, cumulative in delivery_options
                         ],
+                        "attributes": [
+                            {"label": label, "key": key, "values": [{"label": v} for v in values]}
+                            for key, label, values in attributes
+                        ],
+                        "status": status,
+                        "conditionKey": condition_key,
+                        "categoryId": category_id,
+                        "feedbackState": feedback_state,
                     },
                     "dehydratedState": {
                         "queries": [

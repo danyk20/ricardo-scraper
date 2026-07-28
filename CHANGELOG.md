@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-07-28
+
+### Added
+
+- Detail-mode listings now also carry `color`/`model` (from the JSON-LD
+  `Product` node) and `attributes` -- a generic, category-agnostic flattening
+  of the site's own structured characteristics panel (e.g. `auto_mileage`/
+  `car_brand` for a car listing, different keys for other categories) out of
+  the `#__NEXT_DATA__` blob. Any other top-level `#__NEXT_DATA__` article
+  field not already mapped to a named output field is now also carried
+  through generically as `article_<key>` (internal-only state such as
+  `moneyGuardMaxPrice`/`feedbackState` is excluded), so newly-added fields on
+  ricardo.ch's side no longer need a code change to be captured -- all of
+  this data was already being fetched on every detail-page visit, just
+  discarded before `scrape()` returned it.
+
 ## [0.2.0] - 2026-07-07
 
 ### Added

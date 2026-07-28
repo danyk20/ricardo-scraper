@@ -86,7 +86,7 @@ from playwright.sync_api import Error as PlaywrightError
 
 from pin_camoufox_browser import ensure_pinned_browser
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 DEFAULT_LOCALE = "de"
 BASE_URL = "https://www.ricardo.ch"
@@ -300,12 +300,21 @@ def extract_next_data(session: BrowserSession, **kwargs: Any) -> dict[str, Any] 
         return None
 
 
+_ARTICLE_MAPPED_KEYS = {"offer", "seller", "deliveryOptions", "attributes"}
+"""article keys already surfaced by name below -- skip in the generic pass."""
+
+_ARTICLE_INTERNAL_KEYS = {"moneyGuardMaxPrice", "isAuctionMGEligible", "feedbackState", "errorCode"}
+"""article keys that are internal-only state, not listing data -- never surface these."""
+
+
 def _extract_extra_fields(next_data: dict[str, Any] | None) -> dict[str, Any]:
-    """Pulls location/seller-rating/delivery/Q&A out of a parsed
-    #__NEXT_DATA__ blob (see extract_next_data()). Degrades to empty/None
-    values rather than raising if any part of the expected shape is
-    missing -- this is supplementary data layered on top of the JSON-LD
-    record, not something a listing should be dropped over."""
+    """Pulls location/seller-rating/delivery/Q&A/attributes out of a parsed
+    #__NEXT_DATA__ blob (see extract_next_data()). Any other article field
+    not already mapped by name is passed through generically (prefixed
+    `article_`) so new fields Ricardo adds don't get silently dropped.
+    Degrades to empty/None values rather than raising if any part of the
+    expected shape is missing -- this is supplementary data layered on top
+    of the JSON-LD record, not something a listing should be dropped over."""
     defaults: dict[str, Any] = {
         "location_city": None,
         "location_zip": None,
@@ -313,6 +322,7 @@ def _extract_extra_fields(next_data: dict[str, Any] | None) -> dict[str, Any]:
         "seller_ratings_count": None,
         "delivery_options": [],
         "questions_and_answers": [],
+        "attributes": {},
     }
     if not next_data:
         return defaults
@@ -340,6 +350,17 @@ def _extract_extra_fields(next_data: dict[str, Any] | None) -> dict[str, Any]:
         }
         for opt in (article.get("deliveryOptions") or [])
     ]
+
+    defaults["attributes"] = {
+        attr["key"]: "; ".join(v.get("label", "") for v in attr.get("values") or [])
+        for attr in (article.get("attributes") or [])
+        if attr.get("key") and attr.get("values")
+    }
+
+    for key, value in article.items():
+        if key in _ARTICLE_MAPPED_KEYS or key in _ARTICLE_INTERNAL_KEYS:
+            continue
+        defaults[f"article_{key}"] = value
 
     try:
         queries = page_props["dehydratedState"]["queries"]
@@ -384,6 +405,8 @@ def _listing_from_product(product: dict[str, Any], url: str, extra: dict[str, An
         "seller_name": seller.get("name"),
         "seller_url": seller.get("url"),
         "brand": brand.get("name"),
+        "color": product.get("color"),
+        "model": product.get("model"),
         "categories": categories,
         "images": product.get("image", []),
         **extra,

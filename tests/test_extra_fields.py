@@ -58,6 +58,7 @@ def test_extract_extra_fields_none_input_returns_defaults():
         "seller_ratings_count": None,
         "delivery_options": [],
         "questions_and_answers": [],
+        "attributes": {},
     }
 
 
@@ -91,6 +92,65 @@ def test_extract_extra_fields_full_shape(next_data_factory):
             "answer_date": "2026-06-02T00:00:00Z",
         }
     ]
+    assert extra["attributes"] == {
+        "auto_first_registration_year": "2018",
+        "auto_mileage": "93'500 km",
+        "auto_gear_type": "Automat",
+        "color": "Weiss",
+        "car_brand": "Tesla",
+        "car_model": "Model X",
+    }
+    assert extra["article_status"] == "active"
+    assert extra["article_conditionKey"] == "used"
+    assert extra["article_categoryId"] == 39272
+    assert "article_feedbackState" not in extra
+    assert "feedbackState" not in extra
+
+
+def test_extract_extra_fields_attributes_multi_value_joined(next_data_factory):
+    next_data = json.loads(
+        next_data_factory(attributes=(("vehicle_classification", "Fahrzeug-Klassierung", ("Standard", "Premium")),))
+    )
+
+    extra = _extract_extra_fields(next_data)
+
+    assert extra["attributes"] == {"vehicle_classification": "Standard; Premium"}
+
+
+def test_extract_extra_fields_missing_attributes_degrades_gracefully():
+    next_data = {"props": {"pageProps": {"article": {"offer": {"city": "Bern"}}}}}
+
+    extra = _extract_extra_fields(next_data)
+
+    assert extra["attributes"] == {}
+
+
+def test_extract_extra_fields_attributes_are_category_agnostic(next_data_factory):
+    """attributes/article_* aren't hardcoded to car listings -- any
+    category's own attribute keys (phone specs here, a bike's frame size
+    elsewhere, etc.) flow through generically."""
+    next_data = json.loads(
+        next_data_factory(
+            attributes=(
+                ("phone_storage", "Speicher", ("256 GB",)),
+                ("phone_os", "Betriebssystem", ("iOS",)),
+                ("phone_screen_size", "Bildschirmgrösse", ('6.1"',)),
+            ),
+            status="active",
+            condition_key="new",
+            category_id=12345,
+        )
+    )
+
+    extra = _extract_extra_fields(next_data)
+
+    assert extra["attributes"] == {
+        "phone_storage": "256 GB",
+        "phone_os": "iOS",
+        "phone_screen_size": '6.1"',
+    }
+    assert extra["article_categoryId"] == 12345
+    assert extra["article_conditionKey"] == "new"
 
 
 def test_extract_extra_fields_no_seller_rating_yet(next_data_factory):
