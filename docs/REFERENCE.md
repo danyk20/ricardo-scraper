@@ -105,17 +105,17 @@ equally well.
 
 ```python
 def scrape(
-    query: str,                        # e.g. "laptop" or "iphone 13" -- required
+    query: str,  # e.g. "laptop" or "iphone 13" -- required
     *,
-    locale: str = "de",                # "de" / "fr" / "it"
-    category: str | None = None,       # optional Ricardo category id or name; requires detail=True
-    detail: bool = True,                # visit every listing individually for full fields (slower)
-    price_from: float | None = None,   # CHF, inclusive, filtered client-side
-    price_to: float | None = None,     # CHF, inclusive, filtered client-side
-    delay: float = 1.5,                # seconds between requests
-    max_results: int | None = None,    # optional cap on listings collected
-    verbose: bool = True,              # emit progress via the "ricardo_scraper" logger
-    headless: bool = True,             # no window at all by default -- see Cloudflare section
+    locale: str = "de",  # "de" / "fr" / "it"
+    category: str | None = None,  # optional Ricardo category id or name; requires detail=True
+    detail: bool = True,  # visit every listing individually for full fields (slower)
+    price_from: float | None = None,  # CHF, inclusive, filtered client-side
+    price_to: float | None = None,  # CHF, inclusive, filtered client-side
+    delay: float = 1.5,  # seconds between requests
+    max_results: int | None = None,  # optional cap on listings collected
+    verbose: bool = True,  # emit progress via the "ricardo_scraper" logger
+    headless: bool = True,  # no window at all by default -- see Cloudflare section
     session: BrowserSession | None = None,  # reuse a browser session across calls if given
 ) -> ScrapeResult: ...
 ```
@@ -134,6 +134,7 @@ To see progress when calling `scrape()` from your own script:
 
 ```python
 import logging
+
 logging.basicConfig(level=logging.INFO)
 ```
 
@@ -161,14 +162,14 @@ with BrowserSession() as session:
 ```python
 @dataclass
 class ScrapeResult:
-    query: str               # the query that was searched
+    query: str  # the query that was searched
     locale: str
-    category: str | None     # the category filter used, if any
-    total_elements: int      # number of unique listings found by the search phase
-    listings: list[dict]     # raw per-listing records -- see "Data structure" below
-    rows: list[dict]         # flattened dicts, one per listing, CSV-ready, sorted by price ascending
+    category: str | None  # the category filter used, if any
+    total_elements: int  # number of unique listings found by the search phase
+    listings: list[dict]  # raw per-listing records -- see "Data structure" below
+    rows: list[dict]  # flattened dicts, one per listing, CSV-ready, sorted by price ascending
 
-    def to_csv(self, path: str) -> None: ...   # writes self.rows
+    def to_csv(self, path: str) -> None: ...  # writes self.rows
     def to_json(self, path: str) -> None: ...  # writes self.listings
 ```
 

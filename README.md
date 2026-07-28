@@ -78,7 +78,7 @@ from ricardo_scraper import scrape
 
 result = scrape("laptop", price_to=500)
 
-for row in result.rows:       # list[dict], CSV-ready
+for row in result.rows:  # list[dict], CSV-ready
     print(row["title"], row.get("price"), row["url"])
 
 result.to_csv("laptops.csv")  # optional — no files are written unless you ask
