@@ -13,7 +13,7 @@ camoufox = "==0.4.11"
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
-ruff = "*"
+ruff = "~=0.16.0"
 mypy = "*"
 pre-commit = "*"
 

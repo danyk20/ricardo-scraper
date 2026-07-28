@@ -1,9 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0 # keep in sync with whatever `ruff~=0.15` in pyproject.toml actually
-    # resolves to in CI (that spec floats past 0.15.x -- PEP 440 ~= only pins
-    # the major "0" -- so re-run `pre-commit autoupdate` if CI's installed
-    # version drifts from this).
+    rev: v0.16.0 # keep in sync with the "ruff~=0.16.0" pin in pyproject.toml/Pipfile/ci.yml
     hooks:
       - id: ruff-check
         args: [--fix]
