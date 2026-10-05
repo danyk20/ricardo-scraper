@@ -64,9 +64,12 @@ match works off the slug's non-numeric part (`_category_matches()` in
 Every valid category id, name and slug (all 1,704, German) is listed in
 [CATEGORIES.md](CATEGORIES.md), with a machine-readable copy in
 [`categories.json`](categories.json) (one category per line, with
-`parent_id`, `depth` and full `path`). Both are generated from ricardo.ch's
-own category API by `update_categories.py`. Rerun it when Ricardo changes
-its taxonomy.
+`parent_id`, `depth` and full `path`). The same records ship with the
+package as `ricardo_scraper.CATEGORIES`, a flat list of dicts in
+depth-first order (each category followed by its subtree), so library code
+can list, validate or build a tree from them without the repo. All three
+are generated from ricardo.ch's own category API by `update_categories.py`.
+Rerun it when Ricardo changes its taxonomy.
 
 A category matches its **whole subtree**: `--category 63788` (*Büro &
 Gewerbe*) also keeps a listing filed 4 levels below it. That takes one

@@ -1,6 +1,6 @@
 import pytest
 
-from ricardo_categories import CATEGORIES as BUNDLED
+import ricardo_scraper
 from ricardo_scraper import _category_matches, _with_ancestors
 
 CATEGORIES = ["notebooks-39272", "computer-netzwerk-39091", "de"]
@@ -32,8 +32,8 @@ def test_category_matches_empty_categories_list():
     assert _category_matches([], "notebooks") is False
 
 
-# A trimmed copy of the real Büro & Gewerbe branch (ricardo_categories.py's
-# shape): a listing in 82351 only carries the 82351/79697/79687 breadcrumbs.
+# A trimmed copy of the real Büro & Gewerbe branch, in _CATEGORY_PARENTS'
+# id -> (slug, parent id) shape: a listing in 82351 only carries the 82351/79697/79687 breadcrumbs.
 TREE = {
     63788: ("buero-gewerbe-63788", None),
     79574: ("agrar-forst-bauen-79574", 63788),
@@ -46,7 +46,7 @@ DEEP_BREADCRUMBS = ["pressen-wickelnzubehoer-82351", "pressen-wickeln-zubehoer-7
 
 @pytest.fixture
 def tree(monkeypatch):
-    monkeypatch.setattr("ricardo_scraper.CATEGORIES", TREE)
+    monkeypatch.setattr("ricardo_scraper._CATEGORY_PARENTS", TREE)
 
 
 @pytest.mark.parametrize(
@@ -82,18 +82,37 @@ def test_with_ancestors_appends_each_missing_ancestor_once(tree):
 
 
 def test_with_ancestors_stops_at_a_parent_missing_from_the_snapshot(monkeypatch):
-    monkeypatch.setattr("ricardo_scraper.CATEGORIES", {82351: ("pressen-wickelnzubehoer-82351", 79697)})
+    monkeypatch.setattr("ricardo_scraper._CATEGORY_PARENTS", {82351: ("pressen-wickelnzubehoer-82351", 79697)})
     assert _with_ancestors(["pressen-wickelnzubehoer-82351"]) == ["pressen-wickelnzubehoer-82351"]
 
 
+def test_public_categories_list_has_one_record_per_category():
+    # ricardo_scraper.CATEGORIES is public API (downstream code builds its own
+    # tree from id/name/parent_id), so pin the record shape, not just the count.
+    assert len(ricardo_scraper.CATEGORIES) > 1000
+    for record in ricardo_scraper.CATEGORIES:
+        assert set(record) == {"id", "name", "slug", "parent_id", "depth", "path"}
+        assert isinstance(record["id"], int)
+        assert record["slug"].endswith(f"-{record['id']}")
+    ids = [c["id"] for c in ricardo_scraper.CATEGORIES]
+    assert len(ids) == len(set(ids))
+    notebooks = next(c for c in ricardo_scraper.CATEGORIES if c["id"] == 39272)
+    assert notebooks["parent_id"] == 39091
+    assert notebooks["path"] == "Computer & Netzwerk > Notebooks"
+
+
 def test_bundled_snapshot_is_a_consistent_tree():
-    # Guards the generated ricardo_categories.py itself: every parent exists,
-    # every slug ends in its own id, and every chain reaches a top-level category.
-    assert len(BUNDLED) > 1000
-    for category_id, (slug, parent_id) in BUNDLED.items():
-        assert slug.endswith(f"-{category_id}")
-        seen = {category_id}
-        while parent_id is not None:
-            assert parent_id in BUNDLED and parent_id not in seen
-            seen.add(parent_id)
-            parent_id = BUNDLED[parent_id][1]
+    # Every parent exists and comes before its children (depth-first order),
+    # depth matches the parent chain, and the path ends in the category's name.
+    by_id = {}
+    for record in ricardo_scraper.CATEGORIES:
+        parent = by_id.get(record["parent_id"])
+        if record["parent_id"] is None:
+            assert record["depth"] == 0
+            assert record["path"] == record["name"]
+        else:
+            assert parent is not None, f"{record['id']} listed before its parent {record['parent_id']}"
+            assert record["depth"] == parent["depth"] + 1
+            assert record["path"] == f"{parent['path']} > {record['name']}"
+        by_id[record["id"]] = record
+    assert ricardo_scraper._CATEGORY_PARENTS == {i: (c["slug"], c["parent_id"]) for i, c in by_id.items()}

@@ -91,7 +91,7 @@ def test_scrape_category_filter_keeps_listings_deeper_than_their_breadcrumbs(
     monkeypatch, fake_session_factory, summary_item_factory, product_jsonld_factory, no_sleep
 ):
     monkeypatch.setattr(
-        "ricardo_scraper.CATEGORIES",
+        "ricardo_scraper._CATEGORY_PARENTS",
         {1: ("root-1", None), 2: ("mid-2", 1), 3: ("lower-3", 2), 4: ("leaf-4", 3), 9: ("other-9", None)},
     )
     deep = summary_item_factory(listing_id="1", slug="a")

@@ -84,6 +84,17 @@ for row in result.rows:  # list[dict], CSV-ready
 result.to_csv("laptops.csv")  # optional — no files are written unless you ask
 ```
 
+Every ricardo.ch category ships with the package, too — the IDs `category=` accepts, each with its parent so you can rebuild the hierarchy:
+
+```python
+from ricardo_scraper import CATEGORIES
+
+notebooks = next(c for c in CATEGORIES if c["id"] == 39272)
+# {"id": 39272, "name": "Notebooks", "slug": "notebooks-39272", "parent_id": 39091,
+#  "depth": 1, "path": "Computer & Netzwerk > Notebooks"}
+children = [c for c in CATEGORIES if c["parent_id"] == 39091]  # everything under Computer & Netzwerk
+```
+
 Full `scrape()` signature, the `ScrapeResult` return type, browser-session reuse, and the complete JSON/CSV field schema: **[docs/REFERENCE.md](docs/REFERENCE.md)**.
 
 ## Testing
