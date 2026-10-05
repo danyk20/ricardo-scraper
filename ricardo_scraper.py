@@ -86,7 +86,7 @@ from playwright.sync_api import Error as PlaywrightError
 
 from pin_camoufox_browser import ensure_pinned_browser
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 DEFAULT_LOCALE = "de"
 BASE_URL = "https://www.ricardo.ch"
@@ -584,8 +584,9 @@ def scrape(
         query: Free-text search term, e.g. "laptop" or "iphone 13".
         locale: Ricardo locale ("de"/"fr"/"it"), default "de".
         category: Optional Ricardo category id or name (e.g. "39272" or
-            "notebooks" for the same category). Matched client-side against
-            each listing's JSON-LD category breadcrumbs -- see the module
+            "notebooks" for the same category; all valid ids are listed in
+            docs/CATEGORIES.md). Matched client-side against each listing's
+            JSON-LD category breadcrumbs -- see the module
             docstring for why this isn't a real server-side filter, and why
             it requires detail=True.
         detail: If True (default), visit every listing's own page to
@@ -679,8 +680,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--category",
         default=None,
-        help="Ricardo category id or name, e.g. '39272' or 'notebooks'. Matched client-side "
-        "against each listing's category breadcrumbs; requires detail mode (incompatible with --no-detail).",
+        help="Ricardo category id or name, e.g. '39272' or 'notebooks' (all ids: docs/CATEGORIES.md). "
+        "Matched client-side against each listing's category breadcrumbs; requires detail mode (not with --no-detail).",
     )
     parser.add_argument(
         "--out",

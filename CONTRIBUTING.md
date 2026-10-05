@@ -50,6 +50,8 @@ pipenv run pytest -m e2e --no-cov
   (see the README's [Notes](README.md#notes) section for what's
   intentionally out of scope, e.g. real server-side price/category
   filtering, concurrency, a database layer).
+- `docs/CATEGORIES.md` and `docs/categories.json` are generated — don't
+  edit them by hand; rerun `pipenv run python update_categories.py` instead.
 - If you touch `pin_camoufox_browser.py`'s pinned build, re-verify the new
   build against ricardo.ch first — see that module's docstring for why
   "latest" isn't safe to trust here.

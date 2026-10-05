@@ -44,7 +44,7 @@ Prints progress, then writes `laptop.csv` and `laptop.json` in the current direc
 | `--version` | Print the installed version and exit |
 | `query` | Free-text search term, e.g. `"laptop"` or `"iphone 13"` (required, positional) |
 | `--locale` | Ricardo locale (`de`/`fr`/`it`), default `de` |
-| `--category` | Ricardo category id or name, e.g. `39272` or `notebooks` — requires detail mode (default on) |
+| `--category` | Ricardo category id or name, e.g. `39272` or `notebooks` — requires detail mode (default on). All valid ids: [docs/CATEGORIES.md](docs/CATEGORIES.md) |
 | `--out` | Output file base name, without extension. Defaults to a slugified version of the query |
 | `--no-detail` | Skip visiting each listing's own page; keep only summary fields |
 | `--price-from` / `--price-to` | Filter by price in CHF, client-side (inclusive, either end optional) |

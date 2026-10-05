@@ -14,3 +14,5 @@ dist/
 build/
 *.csv
 *.json
+# ...but the generated category list is documentation, not scraper output
+!docs/categories.json

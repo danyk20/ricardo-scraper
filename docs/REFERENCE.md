@@ -61,6 +61,19 @@ expose a separate human-readable category name, only the slug, so the name
 match works off the slug's non-numeric part (`_category_matches()` in
 `ricardo_scraper.py`).
 
+Every valid category id, name and slug (all 1,704, German) is listed in
+[CATEGORIES.md](CATEGORIES.md), with a machine-readable copy in
+[`categories.json`](categories.json) (one category per line, with
+`parent_id`, `depth` and full `path`). Both are generated from ricardo.ch's
+own category API by `update_categories.py`. Rerun it when Ricardo changes
+its taxonomy.
+
+A listing's breadcrumbs hold only its own category and its **two nearest
+ancestors**, not the full path to the top level. So a category id matches
+listings at most 2 levels below it: `--category 63788` (*Büro & Gewerbe*)
+won't match a listing filed 4 levels down under it. Use the `depth` field
+in the category list to choose an id close enough to the leaves you want.
+
 ### Cloudflare
 
 Getting `camoufox` to reliably render ricardo.ch pages took two fixes
