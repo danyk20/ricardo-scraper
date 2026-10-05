@@ -48,7 +48,7 @@ dev = [
 path = "ricardo_scraper.py"
 
 [tool.hatch.build.targets.wheel]
-include = ["ricardo_scraper.py", "pin_camoufox_browser.py"]
+include = ["ricardo_scraper.py", "pin_camoufox_browser.py", "ricardo_categories.py"]
 
 [tool.pytest.ini_options]
 markers = [

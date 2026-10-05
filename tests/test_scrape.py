@@ -87,6 +87,33 @@ def test_scrape_category_filter_applied_after_detail(
     assert [item["id"] for item in result.listings] == ["1"]
 
 
+def test_scrape_category_filter_keeps_listings_deeper_than_their_breadcrumbs(
+    monkeypatch, fake_session_factory, summary_item_factory, product_jsonld_factory, no_sleep
+):
+    monkeypatch.setattr(
+        "ricardo_scraper.CATEGORIES",
+        {1: ("root-1", None), 2: ("mid-2", 1), 3: ("lower-3", 2), 4: ("leaf-4", 3), 9: ("other-9", None)},
+    )
+    deep = summary_item_factory(listing_id="1", slug="a")
+    elsewhere = summary_item_factory(listing_id="2", slug="b")
+    session = fake_session_factory(
+        search_responses={_url("laptop", 1): [deep, elsewhere]},
+        detail_responses={
+            # Breadcrumbs stop 3 levels up, as on ricardo.ch -- the root "1" is missing.
+            f"{BASE_URL}/de/a/a-1/": product_jsonld_factory(
+                listing_id="1", categories=["leaf-4", "lower-3", "mid-2", "de"]
+            ),
+            f"{BASE_URL}/de/a/b-2/": product_jsonld_factory(listing_id="2", categories=["other-9", "de"]),
+        },
+    )
+
+    result = scrape("laptop", category="1", verbose=False, session=session)
+
+    assert [item["id"] for item in result.listings] == ["1"]
+    # Matching uses the rebuilt ancestry, but the output keeps ricardo.ch's own breadcrumbs.
+    assert result.listings[0]["categories"] == ["leaf-4", "lower-3", "mid-2", "de"]
+
+
 def test_scrape_verbose_logs_progress_through_every_stage(
     fake_session_factory, summary_item_factory, product_jsonld_factory, no_sleep
 ):

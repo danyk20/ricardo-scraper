@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `category` filtering now matches a category's whole subtree. A listing's
+  JSON-LD breadcrumbs only hold its own category and its two nearest
+  ancestors, so filtering by a high-level id (e.g. `63788`, *Büro &
+  Gewerbe*) used to silently drop listings filed more than 2 levels below
+  it. The full ancestry is now rebuilt from `ricardo_categories.py`, a
+  generated copy of the category tree shipped with the package (written
+  by `update_categories.py` alongside the docs). Listings' `categories`
+  output is unchanged.
+
 ## [0.2.2] - 2026-10-05
 
 ### Added

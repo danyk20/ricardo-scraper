@@ -111,3 +111,13 @@ def test_fetch_categories_loads_api_from_inside_the_page():
 def test_fetch_categories_raises_on_http_error():
     with pytest.raises(RuntimeError, match="HTTP 403"):
         uc.fetch_categories(_FakeSession({"status": 403, "body": ""}))
+
+
+def test_render_python_module_round_trips_to_the_id_to_slug_and_parent_mapping():
+    source = uc.render_python_module(uc.build_tree(RAW), DATE)
+    namespace: dict = {}
+    exec(source, namespace)
+    assert namespace["CATEGORIES"][50000] == ("zubehoer-50000", 39272)
+    assert namespace["CATEGORIES"][39091] == ("computer-netzwerk-39091", None)
+    assert len(namespace["CATEGORIES"]) == len(RAW)
+    assert "on 2026-10-05 -- do not edit by hand" in source
