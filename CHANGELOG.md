@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Linux: pin a camoufox build that actually contains `camoufox-bin`. The Linux
+  asset of `v152.0.2-alpha` unpacks to `fonts/`, `fontconfig/`, `camoucfg.jvv`,
+  `chrome.css` and `properties.json` only, so `ensure_pinned_browser()` wrote a
+  "pinned" install without a browser binary and camoufox's `launch_path()` then
+  raised `CamoufoxNotInstalled` — the scraper could not start on Linux at all
+  (`No pinned build recorded for ('linux', 'x86_64')` before that). The Linux
+  builds in `v152.0.4-beta.30` are the same Firefox 152.0.4 and do ship the
+  binary; `VERSION`/`RELEASE` are unchanged. Verified end-to-end on Linux
+  x86_64, headless, against the real site.
+
 ## [0.2.3] - 2026-10-05
 
 ### Added

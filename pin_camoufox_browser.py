@@ -46,6 +46,20 @@ ASSET_URLS = {
     ("darwin", "arm64"): (
         "https://github.com/daijro/camoufox/releases/download/v152.0.2-alpha/camoufox-152.0.4-alpha.25-mac.arm64.zip"
     ),
+    # The Linux asset of v152.0.2-alpha (camoufox-152.0.4-alpha.25-lin.x86_64.zip,
+    # 557 MB) unpacks to fonts/, fontconfig/, camoucfg.jvv, chrome.css and
+    # properties.json only -- no `camoufox-bin`, so camoufox's launch_path()
+    # raises CamoufoxNotInstalled on Linux. The Linux builds in v152.0.4-beta.30
+    # are the same Firefox 152.0.4 and do contain the binary, so they are pinned
+    # here instead (verified by unpacking both archives and checking for
+    # `camoufox-bin`). Keep VERSION/RELEASE unchanged -- the browser version is
+    # identical, only the packaging of the Linux asset differs.
+    ("linux", "x86_64"): (
+        "https://github.com/daijro/camoufox/releases/download/v152.0.4-beta.30/camoufox-152.0.4-beta.30-lin.x86_64.zip"
+    ),
+    ("linux", "arm64"): (
+        "https://github.com/daijro/camoufox/releases/download/v152.0.4-beta.30/camoufox-152.0.4-beta.30-lin.arm64.zip"
+    ),
 }
 
 
